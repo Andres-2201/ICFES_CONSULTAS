@@ -6,12 +6,27 @@
 // oficiales del ICFES y formatea la respuesta. No almacena datos.
 
 const ICFES_BASE = 'https://resultadosbackend.icfes.gov.co';
+const ICFES_ORIGIN = 'https://resultados.icfes.gov.co';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
+
+// Headers de navegador realistas. Muchas APIs gubernamentales rechazan
+// peticiones sin User-Agent/Origin/Referer, devolviendo 403 o cerrando la conexión.
+function icfesHeaders(extra = {}) {
+  return {
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    Accept: 'application/json, text/plain, */*',
+    'Accept-Language': 'es-CO,es;q=0.9,en;q=0.8',
+    Origin: ICFES_ORIGIN,
+    Referer: `${ICFES_ORIGIN}/`,
+    ...extra,
+  };
+}
 
 function getMateriaCode(nombreIcfes) {
   const n = (nombreIcfes || '').toLowerCase();
@@ -30,24 +45,49 @@ function json(data, status = 200) {
   });
 }
 
+// Petición de autenticación al ICFES.
+function authFetch(payload) {
+  return fetch(`${ICFES_BASE}/api/segurity/autenticacionResultados`, {
+    method: 'POST',
+    headers: icfesHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+}
+
 // Health check: verifica que la API del ICFES esté viva.
 async function handleGet() {
   try {
-    const res = await fetch(`${ICFES_BASE}/api/segurity/autenticacionResultados`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tipoDocumento: 'TI', numeroDocumento: '111111111',
-        fechaNacimiento: '01/01/2000', numeroRegistro: '', captcha: 'ping',
-      }),
+    const res = await authFetch({
+      tipoDocumento: 'TI', numeroDocumento: '111111111',
+      fechaNacimiento: '01/01/2000', numeroRegistro: '', captcha: 'ping',
     });
-    if (res.ok || (res.status >= 400 && res.status < 500)) {
+    // Cualquier respuesta HTTP (incluso 4xx por datos inexistentes) = servidor vivo.
+    if (res.status > 0) {
       return json({ status: true, message: 'Funcionando' });
     }
-    return json({ status: false, message: 'Caído' }, 500);
-  } catch {
-    return json({ status: false, message: 'Caído' }, 500);
+    return json({ status: false, message: 'Caído' }, 200);
+  } catch (e) {
+    // Solo un fallo de red real (no se pudo conectar) = Caído.
+    return json({ status: false, message: 'Caído', detalle: String(e && e.message || e) }, 200);
   }
+}
+
+// Diagnóstico: /api/consulta?debug=1 devuelve el status crudo del ICFES.
+async function handleDebug() {
+  const out = {};
+  try {
+    const res = await authFetch({
+      tipoDocumento: 'TI', numeroDocumento: '111111111',
+      fechaNacimiento: '01/01/2000', numeroRegistro: '', captcha: 'ping',
+    });
+    out.httpStatus = res.status;
+    out.ok = res.ok;
+    const text = await res.text();
+    out.bodyPreview = text.slice(0, 500);
+  } catch (e) {
+    out.error = String(e && e.message || e);
+  }
+  return json(out);
 }
 
 // Consulta real de resultados oficiales.
@@ -63,14 +103,9 @@ async function handlePost(request) {
   const docType = young ? 'TI' : 'CC';
 
   try {
-    // 1. Autenticación (el backend del ICFES no valida el captcha).
-    const authRes = await fetch(`${ICFES_BASE}/api/segurity/autenticacionResultados`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tipoDocumento: docType, numeroDocumento: document,
-        fechaNacimiento: born, numeroRegistro: '', captcha: 'dummy_token',
-      }),
+    const authRes = await authFetch({
+      tipoDocumento: docType, numeroDocumento: document,
+      fechaNacimiento: born, numeroRegistro: '', captcha: 'dummy_token',
     });
 
     if (!authRes.ok) {
@@ -87,9 +122,9 @@ async function handlePost(request) {
 
     const token = authJson.token;
     const authData = authJson.datosAutenticacion[0];
-    const authHeaders = { Authorization: `Bearer ${token}` };
+    const authHeaders = icfesHeaders({ Authorization: `Bearer ${token}` });
 
-    // 2. Datos básicos (nombre).
+    // Datos básicos (nombre).
     let nombreEstudiante = 'Estudiante';
     try {
       const basicUrl = new URL(`${ICFES_BASE}/api/datos-basicos/datosBasicosRespuesta`);
@@ -105,7 +140,7 @@ async function handlePost(request) {
       }
     } catch { /* nombre opcional */ }
 
-    // 3. Reporte general (puntajes).
+    // Reporte general (puntajes).
     const resultUrl = new URL(`${ICFES_BASE}/api/resultados/datosReporteGeneral`);
     resultUrl.searchParams.set('identificacionUnica', authData.numeroRegistro);
     resultUrl.searchParams.set('examen', authData.datosParametros.examen);
@@ -135,8 +170,8 @@ async function handlePost(request) {
         puntajeMaterias,
       }],
     });
-  } catch {
-    return json({ status: false, message: 'Error interno conectando al ICFES.' }, 500);
+  } catch (e) {
+    return json({ status: false, message: 'Error interno conectando al ICFES.', detalle: String(e && e.message || e) }, 500);
   }
 }
 
@@ -144,19 +179,19 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Endpoint de la API.
     if (url.pathname === '/api/consulta') {
       if (request.method === 'OPTIONS') {
         return new Response(null, { status: 200, headers: CORS_HEADERS });
       }
-      if (request.method === 'GET') return handleGet();
+      if (request.method === 'GET') {
+        if (url.searchParams.get('debug') === '1') return handleDebug();
+        return handleGet();
+      }
       if (request.method === 'POST') return handlePost(request);
       return json({ error: 'Method not allowed' }, 405);
     }
 
-    // Todo lo demás: servir assets estáticos (frontend).
-    // El SPA fallback a index.html lo maneja la config de [assets]
-    // (not_found_handling = "single-page-application").
+    // Frontend estático (SPA fallback vía config de [assets]).
     return env.ASSETS.fetch(request);
   },
 };

@@ -1,13 +1,18 @@
-// Cloudflare Pages Function: /api/consulta
-// Actúa como proxy hacia la API oficial del ICFES (resultados oficiales).
-// Reemplaza el backend serverless de Vercel. Usa fetch nativo (no requiere axios).
+// Cloudflare Worker (entrypoint) para "icfes-consultas".
+// - Sirve el frontend estático (dist/) mediante el binding ASSETS.
+// - Maneja /api/consulta como proxy hacia la API OFICIAL del ICFES.
 //
-// AVISO: Esta herramienta NO es oficial ni está afiliada al ICFES.
-// Solo reenvía la consulta a los servidores oficiales del ICFES y formatea la respuesta.
+// AVISO: Herramienta NO oficial. Solo reenvía la consulta a los servidores
+// oficiales del ICFES y formatea la respuesta. No almacena datos.
 
 const ICFES_BASE = 'https://resultadosbackend.icfes.gov.co';
 
-// Mapea los nombres de las pruebas del ICFES a códigos cortos que usa el frontend.
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 function getMateriaCode(nombreIcfes) {
   const n = (nombreIcfes || '').toLowerCase();
   if (n.includes('lectura')) return 'LEC';
@@ -18,12 +23,6 @@ function getMateriaCode(nombreIcfes) {
   return 'LEC';
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
-
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -31,26 +30,17 @@ function json(data, status = 200) {
   });
 }
 
-// Preflight CORS
-export async function onRequestOptions() {
-  return new Response(null, { status: 200, headers: CORS_HEADERS });
-}
-
-// Health check: verifica que la API del ICFES esté viva sin gastar cuota real.
-export async function onRequestGet() {
+// Health check: verifica que la API del ICFES esté viva.
+async function handleGet() {
   try {
     const res = await fetch(`${ICFES_BASE}/api/segurity/autenticacionResultados`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tipoDocumento: 'TI',
-        numeroDocumento: '111111111',
-        fechaNacimiento: '01/01/2000',
-        numeroRegistro: '',
-        captcha: 'ping',
+        tipoDocumento: 'TI', numeroDocumento: '111111111',
+        fechaNacimiento: '01/01/2000', numeroRegistro: '', captcha: 'ping',
       }),
     });
-    // Si responde (incluso con 4xx por datos inexistentes), el servidor está vivo.
     if (res.ok || (res.status >= 400 && res.status < 500)) {
       return json({ status: true, message: 'Funcionando' });
     }
@@ -60,8 +50,8 @@ export async function onRequestGet() {
   }
 }
 
-// Consulta real de resultados.
-export async function onRequestPost({ request }) {
+// Consulta real de resultados oficiales.
+async function handlePost(request) {
   let body;
   try {
     body = await request.json();
@@ -73,16 +63,13 @@ export async function onRequestPost({ request }) {
   const docType = young ? 'TI' : 'CC';
 
   try {
-    // 1. Autenticación: obtener token (el backend del ICFES no valida el captcha).
+    // 1. Autenticación (el backend del ICFES no valida el captcha).
     const authRes = await fetch(`${ICFES_BASE}/api/segurity/autenticacionResultados`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tipoDocumento: docType,
-        numeroDocumento: document,
-        fechaNacimiento: born,
-        numeroRegistro: '',
-        captcha: 'dummy_token',
+        tipoDocumento: docType, numeroDocumento: document,
+        fechaNacimiento: born, numeroRegistro: '', captcha: 'dummy_token',
       }),
     });
 
@@ -94,7 +81,6 @@ export async function onRequestPost({ request }) {
     }
 
     const authJson = await authRes.json();
-
     if (!authJson.datosAutenticacion || authJson.datosAutenticacion.length === 0) {
       return json({ status: false, message: 'No se encontraron resultados para los datos proporcionados.' });
     }
@@ -103,28 +89,23 @@ export async function onRequestPost({ request }) {
     const authData = authJson.datosAutenticacion[0];
     const authHeaders = { Authorization: `Bearer ${token}` };
 
-    // 2. Datos básicos (nombre del estudiante).
-    const basicUrl = new URL(`${ICFES_BASE}/api/datos-basicos/datosBasicosRespuesta`);
-    basicUrl.searchParams.set('identificacionUnica', authData.numeroRegistro);
-    basicUrl.searchParams.set('examen', authData.datosParametros.examen);
-
+    // 2. Datos básicos (nombre).
     let nombreEstudiante = 'Estudiante';
     try {
+      const basicUrl = new URL(`${ICFES_BASE}/api/datos-basicos/datosBasicosRespuesta`);
+      basicUrl.searchParams.set('identificacionUnica', authData.numeroRegistro);
+      basicUrl.searchParams.set('examen', authData.datosParametros.examen);
       const basicRes = await fetch(basicUrl.toString(), { headers: authHeaders });
       if (basicRes.ok) {
         const basicJson = await basicRes.json();
-        if (basicJson && basicJson.camposDatosBasicos) {
-          const campo = basicJson.camposDatosBasicos.find(
-            (c) => c.labelDatoBasico && c.labelDatoBasico.includes('Nombre')
-          );
-          if (campo) nombreEstudiante = campo.valorDatoBasico;
-        }
+        const campo = basicJson?.camposDatosBasicos?.find(
+          (c) => c.labelDatoBasico && c.labelDatoBasico.includes('Nombre')
+        );
+        if (campo) nombreEstudiante = campo.valorDatoBasico;
       }
-    } catch {
-      // El nombre es opcional; continuamos aunque falle.
-    }
+    } catch { /* nombre opcional */ }
 
-    // 3. Reporte general (puntaje global + puntaje por materia).
+    // 3. Reporte general (puntajes).
     const resultUrl = new URL(`${ICFES_BASE}/api/resultados/datosReporteGeneral`);
     resultUrl.searchParams.set('identificacionUnica', authData.numeroRegistro);
     resultUrl.searchParams.set('examen', authData.datosParametros.examen);
@@ -139,28 +120,47 @@ export async function onRequestPost({ request }) {
     }
 
     const dataIcfes = await resultsRes.json();
-
-    // 4. Mapear al formato que espera el frontend.
     const puntajeMaterias = (dataIcfes.reporteIndividuales || []).map((prueba) => ({
       code: getMateriaCode(prueba.nombrePrueba),
       nombrePrueba: prueba.nombrePrueba,
       puntaje: parseInt(prueba.puntajePrueba, 10),
     }));
 
-    const mappedData = {
+    return json({
       status: true,
       estudiante: nombreEstudiante,
-      examenes: [
-        {
-          ACREGISTRO: authData.numeroRegistro,
-          puntaje: parseInt(dataIcfes.resultadosGenerales.puntajeGlobal, 10),
-          puntajeMaterias,
-        },
-      ],
-    };
-
-    return json(mappedData);
+      examenes: [{
+        ACREGISTRO: authData.numeroRegistro,
+        puntaje: parseInt(dataIcfes.resultadosGenerales.puntajeGlobal, 10),
+        puntajeMaterias,
+      }],
+    });
   } catch {
     return json({ status: false, message: 'Error interno conectando al ICFES.' }, 500);
   }
 }
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    // Endpoint de la API.
+    if (url.pathname === '/api/consulta') {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 200, headers: CORS_HEADERS });
+      }
+      if (request.method === 'GET') return handleGet();
+      if (request.method === 'POST') return handlePost(request);
+      return json({ error: 'Method not allowed' }, 405);
+    }
+
+    // Todo lo demás: servir assets estáticos (frontend).
+    // SPA fallback: si el asset no existe, devolver index.html.
+    const assetResponse = await env.ASSETS.fetch(request);
+    if (assetResponse.status === 404) {
+      const indexRequest = new Request(new URL('/index.html', url.origin), request);
+      return env.ASSETS.fetch(indexRequest);
+    }
+    return assetResponse;
+  },
+};

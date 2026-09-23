@@ -1,0 +1,9 @@
+name = "icfes-consultas"
+main = "src/worker.js"
+compatibility_date = "2025-09-01"
+
+# Sirve el frontend estático generado por Vite (carpeta dist/).
+# El Worker (src/worker.js) maneja /api/consulta y hace de SPA fallback.
+[assets]
+directory = "./dist"
+binding = "ASSETS"

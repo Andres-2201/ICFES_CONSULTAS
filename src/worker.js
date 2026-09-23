@@ -173,6 +173,25 @@ async function handleDebug(request) {
     }
     out.pruebas.push(r);
   }
+
+  // Prueba de conectividad: GET simple a varios hosts del ICFES para ver
+  // cuáles responden desde el Worker (descarta si el dominio ya no existe).
+  const hosts = [
+    'https://resultadosbackend.icfes.gov.co/',
+    'https://resultados.icfes.gov.co/',
+    'https://www.icfes.gov.co/',
+  ];
+  out.conectividad = [];
+  for (const h of hosts) {
+    const c = { host: h };
+    try {
+      const res = await fetch(h, { method: 'GET', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      c.httpStatus = res.status;
+    } catch (e) {
+      c.error = String((e && e.message) || e);
+    }
+    out.conectividad.push(c);
+  }
   return json(out);
 }
 

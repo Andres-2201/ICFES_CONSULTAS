@@ -124,18 +124,54 @@ async function handleGet() {
 }
 
 // Diagnóstico: /api/consulta?debug=1
+// Prueba varias combinaciones de headers para ver cuál acepta el ICFES.
 async function handleDebug(request) {
-  const out = { cf_country: request.cf?.country, cf_colo: request.cf?.colo };
-  try {
-    const res = await authFetch({
-      tipoDocumento: 'TI', numeroDocumento: '111111111',
-      fechaNacimiento: '01/01/2000', numeroRegistro: '', captcha: 'ping',
-    });
-    out.httpStatus = res.status;
-    out.ok = res.ok;
-    out.bodyPreview = (await res.text()).slice(0, 600);
-  } catch (e) {
-    out.error = String((e && e.message) || e);
+  const out = { cf_country: request.cf?.country, cf_colo: request.cf?.colo, pruebas: [] };
+  const payload = {
+    tipoDocumento: 'TI', numeroDocumento: '111111111',
+    fechaNacimiento: '01/01/2000', numeroRegistro: '', captcha: 'ping',
+  };
+  const url = `${ICFES_BASE}/api/segurity/autenticacionResultados`;
+
+  const variantes = [
+    { nombre: 'solo-content-type', headers: { 'Content-Type': 'application/json' } },
+    {
+      nombre: 'navegador-sin-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'application/json, text/plain, */*',
+        'Accept-Language': 'es-CO,es;q=0.9',
+      },
+    },
+    {
+      nombre: 'con-origin-icfes',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'application/json, text/plain, */*',
+        Origin: 'https://resultados.icfes.gov.co',
+        Referer: 'https://resultados.icfes.gov.co/',
+      },
+    },
+  ];
+
+  for (const v of variantes) {
+    const r = { variante: v.nombre };
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: v.headers,
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      r.httpStatus = res.status;
+      r.ok = res.ok;
+      r.bodyPreview = (await res.text()).slice(0, 300);
+    } catch (e) {
+      r.error = String((e && e.message) || e);
+    }
+    out.pruebas.push(r);
   }
   return json(out);
 }

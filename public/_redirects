@@ -1,5 +1,0 @@
-# Cloudflare Pages SPA fallback.
-# Las rutas /api/* las maneja la Pages Function (functions/api/*).
-# Todo lo demás cae al index.html para que React Router funcione.
-/api/*  /api/:splat  200
-/*      /index.html  200

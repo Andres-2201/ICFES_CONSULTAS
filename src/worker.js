@@ -155,12 +155,8 @@ export default {
     }
 
     // Todo lo demás: servir assets estáticos (frontend).
-    // SPA fallback: si el asset no existe, devolver index.html.
-    const assetResponse = await env.ASSETS.fetch(request);
-    if (assetResponse.status === 404) {
-      const indexRequest = new Request(new URL('/index.html', url.origin), request);
-      return env.ASSETS.fetch(indexRequest);
-    }
-    return assetResponse;
+    // El SPA fallback a index.html lo maneja la config de [assets]
+    // (not_found_handling = "single-page-application").
+    return env.ASSETS.fetch(request);
   },
 };

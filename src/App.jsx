@@ -170,7 +170,9 @@ function App() {
       born: fechaTransformada
     }).then((response) => {
       if (response.data.status === false) {
-        showToast("error", "No se encontraron resultados para este documento. Verifica los datos ingresados.")
+        // Usa el mensaje específico del servidor si existe (bloqueo, saturación, etc.)
+        const msg = response.data.message || "No se encontraron resultados para este documento. Verifica los datos ingresados."
+        showToast("error", msg)
         setLoading(false)
         return
       }

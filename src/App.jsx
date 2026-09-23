@@ -506,7 +506,7 @@ function App() {
             
             <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
               <label>Fecha de nacimiento</label>
-              <input type="date" value={born} onChange={(e) => setBorn(e.target.value)} required />
+              <input type="date" value={born} onChange={(e) => setBorn(e.target.value)} max="2012-12-31" required />
             </div>
 
             <button type="submit" disabled={loading} className="btn-ingresar">

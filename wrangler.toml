@@ -3,9 +3,12 @@ main = "src/worker.js"
 compatibility_date = "2025-09-01"
 
 # Sirve el frontend estático generado por Vite (carpeta dist/).
-# El Worker (src/worker.js) maneja /api/consulta.
 [assets]
 directory = "./dist"
 binding = "ASSETS"
-# SPA: si la ruta no existe como archivo, sirve index.html.
+# SPA: rutas desconocidas del frontend sirven index.html.
 not_found_handling = "single-page-application"
+# CLAVE: por defecto los assets tienen prioridad sobre el Worker.
+# run_worker_first fuerza que /api/* pase primero por el Worker (src/worker.js),
+# para que /api/consulta ejecute el proxy en vez de devolver index.html.
+run_worker_first = ["/api/*"]

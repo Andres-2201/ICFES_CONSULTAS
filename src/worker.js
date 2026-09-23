@@ -178,7 +178,9 @@ async function handleDebug(request) {
   // cuáles responden desde el Worker (descarta si el dominio ya no existe).
   const hosts = [
     'https://resultadosbackend.icfes.gov.co/',
-    'https://resultados.icfes.gov.co/',
+    'https://resultadossaber11.icfes.gov.co/',
+    'https://resultadossaber11.icfes.gov.co/login/',
+    'https://resultadossaberpro.icfes.gov.co/',
     'https://www.icfes.gov.co/',
   ];
   out.conectividad = [];

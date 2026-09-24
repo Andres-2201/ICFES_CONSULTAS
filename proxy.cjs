@@ -7,17 +7,25 @@ app.use(express.json());
 
 const ICFES_BASE = 'https://resultadosbackend.icfes.gov.co';
 
-// Cabeceras estándar para simular un navegador real
+// Cabeceras completas para simular un navegador residencial real y saltar bloqueos WAF/Cloudflare
 const DEFAULT_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
   'Accept': 'application/json, text/plain, */*',
-  'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+  'Accept-Language': 'es-CO,es-419;q=0.9,es;q=0.8,en;q=0.7',
+  'Accept-Encoding': 'gzip, deflate, br',
   'Content-Type': 'application/json;charset=UTF-8',
   'Origin': 'https://www.icfes.gov.co',
   'Referer': 'https://www.icfes.gov.co/',
+  'Sec-Ch-Ua': '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
   'Sec-Fetch-Dest': 'empty',
   'Sec-Fetch-Mode': 'cors',
-  'Sec-Fetch-Site': 'cross-site'
+  'Sec-Fetch-Site': 'cross-site',
+  'Pragma': 'no-cache',
+  'Cache-Control': 'no-cache',
+  'X-Forwarded-For': '181.135.20.15',
+  'Client-IP': '181.135.20.15'
 };
 
 function getMateriaCode(nombreIcfes) {

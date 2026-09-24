@@ -439,7 +439,7 @@ function App() {
           <strong>Estado:</strong> <span style={{ color: apiStatus === 'Funcionando' ? '#4ade80' : '#f87171' }}>{apiStatus === 'loading' ? "Comprobando..." : apiStatus}</span>
         </div>
         <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: '0.8rem' }}>
-          Creado por <a href="https://github.com/Andres-2201" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-red)', textDecoration: 'none', fontWeight: 'bold' }}>FlowStateCode</a>
+          Creado por <a href="https://github.com/Andres-2201" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-red)', textDecoration: 'none', fontWeight: 'bold' }}>Andrés</a>
         </div>
       </div>
 

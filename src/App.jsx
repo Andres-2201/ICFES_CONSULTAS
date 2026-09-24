@@ -14,13 +14,14 @@ function Toast({ type, message }) {
 
 const IcfesLogoSVG = ({ size = 50 }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-    <path d="M22,17 L36,31 L36,48 L17,48 L4,35 L22,35 Z" fill="#00A5B5"/>
-    <path d="M83,22 L69,36 L52,36 L52,17 L65,4 L65,22 Z" fill="#991B27"/>
-    <path d="M17,78 L31,64 L48,64 L48,83 L35,96 L35,78 Z" fill="#77C5CB"/>
-    <path d="M78,83 L64,69 L64,52 L83,52 L96,65 L78,65 Z" fill="#C5282E"/>
+    <path d="M22,17 L36,31 L36,48 L17,48 L4,35 L22,35 Z" fill="#DC2626"/>
+    <path d="M83,22 L69,36 L52,36 L52,17 L65,4 L65,22 Z" fill="#991B1B"/>
+    <path d="M17,78 L31,64 L48,64 L48,83 L35,96 L35,78 Z" fill="#EF4444"/>
+    <path d="M78,83 L64,69 L64,52 L83,52 L96,65 L78,65 Z" fill="#7F1D1D"/>
   </svg>
 );
 
+// Ajustado a tope 100%
 function calcPercentil(puntaje, media = 250, desviacion = 50) {
   const z = (puntaje - media) / desviacion;
   const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -28,10 +29,11 @@ function calcPercentil(puntaje, media = 250, desviacion = 50) {
   const p = d * Math.exp(-z * z / 2);
   const poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
   const cdf = z >= 0 ? 1 - p * poly : p * poly;
-  return Math.min(99, Math.max(1, Math.round(cdf * 100)));
+  return Math.min(100, Math.max(1, Math.round(cdf * 100)));
 }
 
 function calcPercentilMateria(puntaje) {
+  if (puntaje >= 95) return 100;
   return calcPercentil(puntaje, 50, 10);
 }
 
@@ -41,10 +43,10 @@ function getNombreMateria(code) {
 }
 
 function getNivelDesempeno(puntaje) {
-  if (puntaje >= 76) return { nivel: 'Nivel 4', desc: 'Desempeño superior', color: '#2e7d32' };
-  if (puntaje >= 61) return { nivel: 'Nivel 3', desc: 'Desempeño alto', color: '#1b5e20' };
-  if (puntaje >= 41) return { nivel: 'Nivel 2', desc: 'Desempeño medio', color: '#f57f17' };
-  return { nivel: 'Nivel 1', desc: 'Desempeño bajo', color: '#c62828' };
+  if (puntaje >= 76) return { nivel: 'Nivel 4', desc: 'Desempeño superior', color: '#16a34a' };
+  if (puntaje >= 61) return { nivel: 'Nivel 3', desc: 'Desempeño alto', color: '#2563eb' };
+  if (puntaje >= 41) return { nivel: 'Nivel 2', desc: 'Desempeño medio', color: '#d97706' };
+  return { nivel: 'Nivel 1', desc: 'Desempeño bajo', color: '#dc2626' };
 }
 
 function App() {
@@ -90,7 +92,6 @@ function App() {
       })
       .catch(() => setLastCommit("Desconocida"));
 
-    // URL backend de Render
     const apiUrl = "https://icfes-andres.onrender.com/consulta";
 
     axios.get(apiUrl, { timeout: 10000 })
@@ -114,7 +115,6 @@ function App() {
     const [year, month, day] = born.split("-");
     const fechaTransformada = `${day}/${month}/${year}`;
     
-    // URL backend de Render
     const apiUrl = "https://icfes-andres.onrender.com/consulta";
     
     axios.post(apiUrl, {
@@ -190,17 +190,15 @@ function App() {
            <div className="profile-menu">
              <IcfesIcons.User />
              <span>{primerNombre}</span>
-             <span style={{fontSize:'0.6rem'}}>▼</span>
              <button className="btn-logout-dropdown" onClick={handleLogout}>Cerrar sesión</button>
            </div>
         </nav>
 
         <div className="banner-saber">
-           <div className="banner-bg-waves"></div>
            <div className="banner-content">
              <div className="banner-text">
                <h2>Resultados del Examen Saber 11º</h2>
-               <p>Este examen no se pasa ni se pierde. Es una herramienta clave<br/>para que identifiques tus habilidades, las fortalezas, y puedas<br/>construir tu proyecto de vida.</p>
+               <p>Este examen no se pasa ni se pierde. Es una herramienta clave<br/>para que identifiques tus habilidades, tus fortalezas, y puedas<br/>construir tu proyecto de vida.</p>
              </div>
              <div className="banner-logo">
                <span className="number-11">11</span>
@@ -214,8 +212,8 @@ function App() {
         </div>
 
         {mainData.examenes.length > 1 && (
-          <div style={{ maxWidth: '900px', margin: '15px auto', padding: '0 15px' }}>
-            <label style={{ fontWeight: 'bold', marginRight: '10px', fontSize: '0.95rem' }}>
+          <div style={{ maxWidth: '1100px', margin: '20px auto 0 auto', padding: '0 20px' }}>
+            <label style={{ fontWeight: '700', marginRight: '10px', fontSize: '0.9rem' }}>
               Selecciona el Examen / Registro:
             </label>
             <select
@@ -225,12 +223,14 @@ function App() {
                 setSelectedMateria(null);
               }}
               style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #009ca6',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1.5px solid var(--accent-red)',
                 fontWeight: '600',
-                fontSize: '0.9rem',
-                cursor: 'pointer'
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                background: 'var(--bg-surface)',
+                color: 'var(--text-primary)'
               }}
             >
               {mainData.examenes.map((ex, idx) => (
@@ -253,7 +253,7 @@ function App() {
             <div className="section-header">
               <div>
                 <h3>Reporte general</h3>
-                <span style={{ fontSize: '0.85rem', color: '#666' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   Registro: <strong>{examenActual.ACREGISTRO}</strong> {examenActual.periodo !== 'N/A' && `| Periodo: ${examenActual.periodo}`}
                 </span>
               </div>
@@ -269,7 +269,7 @@ function App() {
                <div className="global-left">
                   <div className="global-title">
                      <IcfesIcons.Trophy />
-                     <span>Puntaje<br/>global</span>
+                     <span>Puntaje global</span>
                   </div>
                   <div className="score-big">
                      <span className="score-num">{examenActual.puntaje}</span><span className="score-max">/500</span>
@@ -280,7 +280,7 @@ function App() {
                <div className="global-right">
                   <div className="percentile-title">
                      <IcfesIcons.Pin />
-                     <span>¿En qué percentiles estás?</span>
+                     <span>¿En qué percentil estás?</span>
                   </div>
                   <div className="percentile-data">
                      <div className="perc-left">
@@ -288,9 +288,6 @@ function App() {
                         <div className="perc-bar-container">
                            <div className="perc-bar">
                               <div className="perc-fill" style={{width: `${percentil}%`}}></div>
-                              <div className="perc-segment-lines">
-                                 <div></div><div></div><div></div><div></div>
-                              </div>
                            </div>
                            <div className="perc-markers">
                               <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
@@ -301,7 +298,7 @@ function App() {
                         <span className="perc-num">{percentil}</span>
                      </div>
                      <div className="perc-right">
-                        <p>Tu puntaje superó al {percentil} % de los estudiantes a<br/>nivel nacional.</p>
+                        <p>Tu puntaje superó al <strong>{percentil}%</strong> de los estudiantes a nivel nacional.</p>
                      </div>
                   </div>
                </div>
@@ -345,14 +342,11 @@ function App() {
                 </div>
 
                 <div className="subject-detail-body">
-                  <div className="subject-perc-section">
+                  <div>
                     <span className="perc-label">Percentil nacional en {getNombreMateria(selectedMateria.code)}</span>
                     <div className="perc-bar-container">
                       <div className="perc-bar">
                         <div className="perc-fill" style={{width: `${percMateria}%`}}></div>
-                        <div className="perc-segment-lines">
-                          <div></div><div></div><div></div><div></div>
-                        </div>
                       </div>
                       <div className="perc-markers">
                         <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
@@ -374,7 +368,7 @@ function App() {
             })() : (
             <div className="bottom-placeholder">
                <IcfesIcons.Bulb />
-               <p>Haz clic en una materia para ver tus percentiles, nivel de desempeño<br/>y un análisis de tus resultados en esa área.</p>
+               <p>Haz clic en una materia para ver tus percentiles, nivel de desempeño y un análisis de tus resultados.</p>
                <span className="bottom-link">Conoce a detalle tus resultados</span>
             </div>
             )}
@@ -404,12 +398,12 @@ function App() {
                 <div className="formula-row"><span>Matemáticas</span><span>{getMAT} × 3 = <strong>{getMAT*3}</strong></span></div>
                 <div className="formula-row"><span>Sociales y Ciudadanas</span><span>{getSOC} × 3 = <strong>{getSOC*3}</strong></span></div>
                 <div className="formula-row"><span>Ciencias Naturales</span><span>{getCIE} × 3 = <strong>{getCIE*3}</strong></span></div>
-                <div className="formula-row ing"><span>Inglés</span><span>{getING} × 1 = <strong>{getING}</strong></span></div>
+                <div className="formula-row"><span>Inglés</span><span>{getING} × 1 = <strong>{getING}</strong></span></div>
                 <div className="formula-divider"></div>
-                <div className="formula-row total"><span>Suma total</span><span><strong>{suma}</strong></span></div>
-                <div className="formula-row total"><span>{suma} ÷ 13 × 5</span><span>= <strong>{resultado}</strong></span></div>
+                <div className="formula-row"><span>Suma total</span><span><strong>{suma}</strong></span></div>
+                <div className="formula-row"><span>{suma} ÷ 13 × 5</span><span>= <strong>{resultado}</strong></span></div>
               </div>
-              <p className="modal-result">Tu puntaje global calculated: <strong>{resultado}</strong> {Math.abs(resultado - examenActual.puntaje) <= 5 ? '' : `(ICFES reporta: ${examenActual.puntaje})`}</p>
+              <p className="modal-result">Tu puntaje global calculado: <strong>{resultado}</strong> {Math.abs(resultado - examenActual.puntaje) <= 5 ? '' : `(ICFES reporta: ${examenActual.puntaje})`}</p>
               <p className="modal-note">* Puede haber una pequeña diferencia por redondeo del ICFES.</p>
             </div>
           </div>
@@ -427,42 +421,39 @@ function App() {
         position: 'fixed',
         top: showStatusAlert ? '20px' : '-150px',
         right: '20px',
-        background: apiStatus === 'Funcionando' ? '#e8f5e9' : (apiStatus === 'loading' ? '#f5f5f5' : '#ffebee'),
-        border: `1px solid ${apiStatus === 'Funcionando' ? '#c8e6c9' : (apiStatus === 'loading' ? '#e0e0e0' : '#ffcdd2')}`,
-        padding: '12px 16px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        background: 'var(--dark-surface)',
+        border: '1px solid var(--border-color)',
+        padding: '12px 18px',
+        borderRadius: '12px',
+        boxShadow: 'var(--shadow-md)',
         transition: 'top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
         zIndex: 1000,
-        fontSize: '0.9rem',
-        color: '#333'
+        fontSize: '0.85rem',
+        color: '#ffffff'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div><strong>Última actualización:</strong> {lastCommit || "Cargando..."}</div>
-          <button onClick={() => setShowStatusAlert(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0 0 10px', color: '#999' }}>×</button>
+          <button onClick={() => setShowStatusAlert(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0 0 10px', color: '#a1a1aa' }}>×</button>
         </div>
         <div style={{ marginTop: '5px' }}>
-          <strong>Estado:</strong> {apiStatus === 'loading' ? "Comprobando..." : apiStatus} 
-          {apiStatus === 'Caído' && <span style={{ color: '#d32f2f' }}> (Estamos tratando de solucionarlo pronto)</span>}
+          <strong>Estado:</strong> <span style={{ color: apiStatus === 'Funcionando' ? '#4ade80' : '#f87171' }}>{apiStatus === 'loading' ? "Comprobando..." : apiStatus}</span>
         </div>
-        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(0,0,0,0.05)', fontSize: '0.85rem' }}>
-          Creado y mantenido por <a href="https://github.com/juanitogit" target="_blank" rel="noreferrer" style={{ color: '#009ca6', textDecoration: 'none', fontWeight: 'bold' }}>FlowStateCode</a>
+        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: '0.8rem' }}>
+          Creado por <a href="https://github.com/juanitogit" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-red)', textDecoration: 'none', fontWeight: 'bold' }}>FlowStateCode</a>
         </div>
       </div>
 
       <SEO title="Bienvenido | ICFES" description="Consultar ICFES Saber 11." url="https://icfes-consultas.vercel.app/" />
       
-      <div className="login-container" style={{ position: 'relative' }}>
+      <div className="login-container">
         <div className="login-left">
-          <div style={{ marginBottom: '20px' }}>
-            <h1 style={{ fontSize: '2.2rem', color: '#333' }}>Bienvenido</h1>
-          </div>
+          <h1>Bienvenido</h1>
           <p className="helper">
-            Recuerde ingresar el Tipo y Número de Documento de identidad con el que se inscribió a la prueba y la fecha de nacimiento.
+            Ingresa el Tipo, Número de Documento de identidad y Fecha de nacimiento con la que te inscribiste.
           </p>
 
           <form onSubmit={handleSubmit} className="icfes-form">
-            <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
               <label>Tipo de documento <span>*</span></label>
               <select value={docType} onChange={(e) => setDocType(e.target.value)} required>
                 <option value="TI">Tarjeta de Identidad (TI)</option>
@@ -472,17 +463,17 @@ function App() {
               </select>
             </div>
             
-            <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
               <label>Número de documento <span>*</span></label>
-              <input type="text" value={numDocument} onChange={(e) => setNumDocument(e.target.value)} required />
+              <input type="text" value={numDocument} onChange={(e) => setNumDocument(e.target.value)} required placeholder="Ej: 1000123456" />
             </div>
             
-            <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
               <label>Fecha de nacimiento <span>*</span></label>
               <input type="date" value={born} onChange={(e) => setBorn(e.target.value)} max="2015-12-31" required />
             </div>
 
-            <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
               <label>Número de Registro (Opcional)</label>
               <input 
                 type="text" 
@@ -490,26 +481,22 @@ function App() {
                 value={numeroRegistro} 
                 onChange={(e) => setNumeroRegistro(e.target.value)} 
               />
-              <span style={{ fontSize: '0.75rem', color: '#666' }}>
-                Si el ICFES indica que no encuentra tus resultados, prueba ingresando tu número de registro directamente.
-              </span>
             </div>
 
             <button type="submit" disabled={loading} className="btn-ingresar">
-              {loading ? "Cargando..." : "Ingresar"}
+              {loading ? "Consultando..." : "Ingresar"}
             </button>
           </form>
         </div>
 
         <div className="login-right">
           <svg className="bg-waves top-waves" viewBox="0 0 1440 320" preserveAspectRatio="none">
-            <path fill="#a6192e" fillOpacity="0.9" d="M0,0L1440,0L1440,160C960,320 480,-64 0,160Z"></path>
-            <path fill="#009ca6" fillOpacity="0.8" d="M0,0L1440,0L1440,64C960,192 480,-64 0,64Z"></path>
+            <path fill="#dc2626" fillOpacity="0.8" d="M0,0L1440,0L1440,160C960,320 480,-64 0,160Z"></path>
+            <path fill="#18181b" fillOpacity="0.9" d="M0,0L1440,0L1440,64C960,192 480,-64 0,64Z"></path>
           </svg>
 
           <svg className="bg-waves bottom-waves" viewBox="0 0 1440 320" preserveAspectRatio="none">
-            <path fill="#009ca6" fillOpacity="0.7" d="M0,320L1440,320L1440,96C960,256 480,-64 0,192Z"></path>
-            <path fill="#a6192e" fillOpacity="0.9" d="M0,320L1440,320L1440,224C960,128 480,320 0,288Z"></path>
+            <path fill="#b91c1c" fillOpacity="0.4" d="M0,320L1440,320L1440,160C960,0 480,384 0,160Z"></path>
           </svg>
 
           <div className="center-logo-container">
@@ -523,11 +510,11 @@ function App() {
         <div className="gov-footer-content">
           <div className="footer-col">
             <h4><HiOutlineShieldCheck className="footer-icon-md"/> Privacidad y Seguridad</h4>
-            <p>Herramienta <strong>no oficial</strong>. No almacenamos ningún dato personal: la información se consulta en tiempo real desde los servidores <strong>oficiales</strong> del ICFES.</p>
+            <p>Herramienta <strong>no oficial</strong>. No almacenamos datos personales: la información se consulta directamente de los servidores oficiales del ICFES.</p>
           </div>
           <div className="footer-col">
             <h4><HiOutlineCode className="footer-icon-md"/> Código Abierto</h4>
-            <p>Este proyecto es de código abierto. Contribuye o revisa el código en GitHub.</p>
+            <p>Este proyecto es de código abierto. Revisa el código en GitHub.</p>
             <a href="https://github.com/dfleonm-jpg/ICFES_CONSULTAS" target="_blank" rel="noreferrer" className="github-btn">
               Ver en GitHub
             </a>
@@ -535,11 +522,11 @@ function App() {
         </div>
         <div className="gov-footer-bottom">
           <p>© {new Date().getFullYear()} ICFES Consultas. Desarrollado para estudiantes colombianos.</p>
-          <p className="disclaimer">Sitio NO oficial. No está afiliado, avalado ni respaldado por el ICFES.</p>
+          <p className="disclaimer">Sitio NO oficial. No está afiliado ni respaldado por el ICFES.</p>
         </div>
       </footer>
     </>
   )
 }
 
-export default App
+export default App;

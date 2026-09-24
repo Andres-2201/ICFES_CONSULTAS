@@ -1,13 +1,3 @@
-/*
- * Proxy LOCAL para desarrollo (npm run proxy).
- * Replica la lógica de la Cloudflare Pages Function en functions/api/consulta.js
- * para poder probar en tu máquina con `npm run dev` (Vite) apuntando a localhost:3001.
- *
- * En producción NO se usa este archivo: Cloudflare Pages sirve /api/consulta
- * mediante la función en functions/api/consulta.js.
- *
- * Requiere Node 18+ (usa fetch nativo).
- */
 const express = require('express');
 const cors = require('cors');
 
@@ -47,22 +37,25 @@ app.get('/consulta', async (req, res) => {
 });
 
 app.post('/consulta', async (req, res) => {
-  const { document, young, born } = req.body;
-  const docType = young ? 'TI' : 'CC';
+  const { document, docType, born, numeroRegistro } = req.body;
+  const tipoDoc = docType || 'TI';
 
   try {
     const authRes = await fetch(`${ICFES_BASE}/api/segurity/autenticacionResultados`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tipoDocumento: docType, numeroDocumento: document,
-        fechaNacimiento: born, numeroRegistro: '', captcha: 'dummy_token',
+        tipoDocumento: tipoDoc,
+        numeroDocumento: document,
+        fechaNacimiento: born,
+        numeroRegistro: numeroRegistro || '',
+        captcha: 'dummy_token',
       }),
     });
 
     if (!authRes.ok) {
       if (authRes.status === 404) {
-        return res.json({ status: false, message: 'El ICFES indica que no se pudieron generar los resultados.' });
+        return res.json({ status: false, message: 'El ICFES indica que no se pudieron generar los resultados. Verifica el tipo/número de documento y fecha de nacimiento con los que te inscribiste al examen.' });
       }
       return res.status(authRes.status).json({ status: false, message: 'Error interno conectando al ICFES.' });
     }
@@ -73,14 +66,23 @@ app.post('/consulta', async (req, res) => {
     }
 
     const token = authJson.token;
-    const authData = authJson.datosAutenticacion[0];
     const authHeaders = { Authorization: `Bearer ${token}` };
 
+    // Si el usuario especificó un registro, filtramos la lista. Si no, tomamos todos.
+    let registrosAProcesar = authJson.datosAutenticacion;
+    if (numeroRegistro) {
+      const filtrado = authJson.datosAutenticacion.filter(
+        item => item.numeroRegistro && item.numeroRegistro.trim().toUpperCase() === numeroRegistro.trim().toUpperCase()
+      );
+      if (filtrado.length > 0) registrosAProcesar = filtrado;
+    }
+
     let nombreEstudiante = 'Estudiante';
+    const primerRegistro = registrosAProcesar[0];
     try {
       const basicUrl = new URL(`${ICFES_BASE}/api/datos-basicos/datosBasicosRespuesta`);
-      basicUrl.searchParams.set('identificacionUnica', authData.numeroRegistro);
-      basicUrl.searchParams.set('examen', authData.datosParametros.examen);
+      basicUrl.searchParams.set('identificacionUnica', primerRegistro.numeroRegistro);
+      basicUrl.searchParams.set('examen', primerRegistro.datosParametros.examen);
       const basicRes = await fetch(basicUrl, { headers: authHeaders });
       if (basicRes.ok) {
         const basicJson = await basicRes.json();
@@ -91,34 +93,44 @@ app.post('/consulta', async (req, res) => {
       }
     } catch { /* nombre opcional */ }
 
-    const resultUrl = new URL(`${ICFES_BASE}/api/resultados/datosReporteGeneral`);
-    resultUrl.searchParams.set('identificacionUnica', authData.numeroRegistro);
-    resultUrl.searchParams.set('examen', authData.datosParametros.examen);
-    resultUrl.searchParams.set('periodoAnioExamen', authData.datosParametros.periodoAnioExamen);
+    // Procesar todos los exámenes asociados
+    const listaExamenes = [];
 
-    const resultsRes = await fetch(resultUrl, { headers: authHeaders });
-    if (!resultsRes.ok) {
-      if (resultsRes.status === 404) {
-        return res.json({ status: false, message: 'El ICFES indica que no se pudieron generar los resultados.' });
-      }
-      return res.status(resultsRes.status).json({ status: false, message: 'Error interno conectando al ICFES.' });
+    for (const authData of registrosAProcesar) {
+      try {
+        const resultUrl = new URL(`${ICFES_BASE}/api/resultados/datosReporteGeneral`);
+        resultUrl.searchParams.set('identificacionUnica', authData.numeroRegistro);
+        resultUrl.searchParams.set('examen', authData.datosParametros.examen);
+        resultUrl.searchParams.set('periodoAnioExamen', authData.datosParametros.periodoAnioExamen);
+
+        const resultsRes = await fetch(resultUrl, { headers: authHeaders });
+        if (resultsRes.ok) {
+          const dataIcfes = await resultsRes.json();
+          const puntajeMaterias = (dataIcfes.reporteIndividuales || []).map((prueba) => ({
+            code: getMateriaCode(prueba.nombrePrueba),
+            nombrePrueba: prueba.nombrePrueba,
+            puntaje: parseInt(prueba.puntajePrueba, 10),
+          }));
+
+          listaExamenes.push({
+            ACREGISTRO: authData.numeroRegistro,
+            periodo: authData.datosParametros.periodoAnioExamen || 'N/A',
+            examenNombre: authData.datosParametros.examen || 'SABER 11',
+            puntaje: parseInt(dataIcfes.resultadosGenerales.puntajeGlobal, 10),
+            puntajeMaterias,
+          });
+        }
+      } catch { /* continuar con otros exámenes si falla uno */ }
     }
 
-    const dataIcfes = await resultsRes.json();
-    const puntajeMaterias = (dataIcfes.reporteIndividuales || []).map((prueba) => ({
-      code: getMateriaCode(prueba.nombrePrueba),
-      nombrePrueba: prueba.nombrePrueba,
-      puntaje: parseInt(prueba.puntajePrueba, 10),
-    }));
+    if (listaExamenes.length === 0) {
+      return res.json({ status: false, message: 'El ICFES no retornó puntajes para los registros encontrados.' });
+    }
 
     res.json({
       status: true,
       estudiante: nombreEstudiante,
-      examenes: [{
-        ACREGISTRO: authData.numeroRegistro,
-        puntaje: parseInt(dataIcfes.resultadosGenerales.puntajeGlobal, 10),
-        puntajeMaterias,
-      }],
+      examenes: listaExamenes,
     });
   } catch {
     res.status(500).json({ status: false, message: 'Error interno conectando al ICFES.' });

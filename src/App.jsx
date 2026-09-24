@@ -7,7 +7,7 @@ import { HiOutlineShieldCheck, HiOutlineCode } from "react-icons/hi";
 // Detecta automáticamente si estás en localhost o en la web publicada
 const API_BASE_URL = import.meta.env.DEV 
   ? "http://localhost:3001/consulta" 
-  : "/consulta"; 
+  : "https://icfes-andres.onrender.com/consulta";
 
 function Toast({ type, message }) {
   return (

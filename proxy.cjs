@@ -67,6 +67,12 @@ app.post('/consulta', async (req, res) => {
     });
 
     if (!authRes.ok) {
+      const errorText = await authRes.text();
+      console.log("=== RESPUESTA ERROR DEL ICFES ===");
+      console.log("Status:", authRes.status);
+      console.log("Cuerpo:", errorText);
+      console.log("=================================");
+
       if (authRes.status === 404) {
         return res.json({ status: false, message: 'El ICFES indica que no se pudieron generar los resultados. Verifica el tipo/número de documento y fecha de nacimiento con los que te inscribiste al examen.' });
       }
@@ -137,7 +143,7 @@ app.post('/consulta', async (req, res) => {
             puntajeMaterias,
           });
         }
-      } catch { /* continuar con otros exámenes */ }
+      } catch { /* continuar con otros exámenes si falla uno */ }
     }
 
     if (listaExamenes.length === 0) {
@@ -156,5 +162,5 @@ app.post('/consulta', async (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Proxy escuchando en el puerto ${PORT}`);
+  console.log(`Proxy ICFES escuchando en el puerto ${PORT}`);
 });

@@ -4,11 +4,6 @@ import SEO from "./components/SEO";
 import { IcfesIcons } from "./components/IcfesIcons";
 import { HiOutlineShieldCheck, HiOutlineCode } from "react-icons/hi";
 
-// Detecta automáticamente si estás en localhost o en la web publicada
-const API_BASE_URL = import.meta.env.DEV 
-  ? "http://localhost:3001/consulta" 
-  : "https://icfes-andres.onrender.com/consulta";
-
 function Toast({ type, message }) {
   return (
     <div className={`toast ${type}`}>
@@ -26,6 +21,7 @@ const IcfesLogoSVG = ({ size = 50 }) => (
   </svg>
 );
 
+// Ajustado a tope 100%
 function calcPercentil(puntaje, media = 250, desviacion = 50) {
   const z = (puntaje - media) / desviacion;
   const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -96,7 +92,9 @@ function App() {
       })
       .catch(() => setLastCommit("Desconocida"));
 
-    axios.get(API_BASE_URL, { timeout: 10000 })
+    const apiUrl = "https://icfes-andres.onrender.com/consulta";
+
+    axios.get(apiUrl, { timeout: 10000 })
       .then(res => setApiStatus(res.data.status ? "Funcionando" : "Caído"))
       .catch(() => setApiStatus("Caído"));
       
@@ -117,7 +115,9 @@ function App() {
     const [year, month, day] = born.split("-");
     const fechaTransformada = `${day}/${month}/${year}`;
     
-    axios.post(API_BASE_URL, {
+    const apiUrl = "https://icfes-andres.onrender.com/consulta";
+    
+    axios.post(apiUrl, {
       document: numDocument,
       docType: docType,
       born: fechaTransformada,

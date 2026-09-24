@@ -93,6 +93,7 @@ app.post('/consulta', async (req, res) => {
       Authorization: `Bearer ${token}`
     };
 
+    // Si el usuario especificó un registro, filtramos la lista. Si no, tomamos todos.
     let registrosAProcesar = authJson.datosAutenticacion;
     if (numeroRegistro) {
       const filtrado = authJson.datosAutenticacion.filter(
@@ -117,6 +118,7 @@ app.post('/consulta', async (req, res) => {
       }
     } catch { /* nombre opcional */ }
 
+    // Procesar todos los exámenes asociados
     const listaExamenes = [];
 
     for (const authData of registrosAProcesar) {

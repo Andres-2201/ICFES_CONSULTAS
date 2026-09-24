@@ -90,7 +90,8 @@ function App() {
       })
       .catch(() => setLastCommit("Desconocida"));
 
-    const apiUrl = import.meta.env.DEV ? "http://localhost:3001/consulta" : "/api/consulta";
+    // URL backend de Render
+    const apiUrl = "https://icfes-andres.onrender.com/consulta";
 
     axios.get(apiUrl, { timeout: 10000 })
       .then(res => setApiStatus(res.data.status ? "Funcionando" : "Caído"))
@@ -113,7 +114,8 @@ function App() {
     const [year, month, day] = born.split("-");
     const fechaTransformada = `${day}/${month}/${year}`;
     
-    const apiUrl = import.meta.env.DEV ? "http://localhost:3001/consulta" : "/api/consulta";
+    // URL backend de Render
+    const apiUrl = "https://icfes-andres.onrender.com/consulta";
     
     axios.post(apiUrl, {
       document: numDocument,
@@ -211,7 +213,6 @@ function App() {
            </div>
         </div>
 
-        {/* Selector si hay múltiples exámenes */}
         {mainData.examenes.length > 1 && (
           <div style={{ maxWidth: '900px', margin: '15px auto', padding: '0 15px' }}>
             <label style={{ fontWeight: 'bold', marginRight: '10px', fontSize: '0.95rem' }}>
@@ -408,7 +409,7 @@ function App() {
                 <div className="formula-row total"><span>Suma total</span><span><strong>{suma}</strong></span></div>
                 <div className="formula-row total"><span>{suma} ÷ 13 × 5</span><span>= <strong>{resultado}</strong></span></div>
               </div>
-              <p className="modal-result">Tu puntaje global calculado: <strong>{resultado}</strong> {Math.abs(resultado - examenActual.puntaje) <= 5 ? '' : `(ICFES reporta: ${examenActual.puntaje})`}</p>
+              <p className="modal-result">Tu puntaje global calculated: <strong>{resultado}</strong> {Math.abs(resultado - examenActual.puntaje) <= 5 ? '' : `(ICFES reporta: ${examenActual.puntaje})`}</p>
               <p className="modal-note">* Puede haber una pequeña diferencia por redondeo del ICFES.</p>
             </div>
           </div>

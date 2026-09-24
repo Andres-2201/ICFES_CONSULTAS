@@ -7,6 +7,19 @@ app.use(express.json());
 
 const ICFES_BASE = 'https://resultadosbackend.icfes.gov.co';
 
+// Cabeceras estándar para simular un navegador real
+const DEFAULT_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+  'Accept': 'application/json, text/plain, */*',
+  'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+  'Content-Type': 'application/json;charset=UTF-8',
+  'Origin': 'https://www.icfes.gov.co',
+  'Referer': 'https://www.icfes.gov.co/',
+  'Sec-Fetch-Dest': 'empty',
+  'Sec-Fetch-Mode': 'cors',
+  'Sec-Fetch-Site': 'cross-site'
+};
+
 function getMateriaCode(nombreIcfes) {
   const n = (nombreIcfes || '').toLowerCase();
   if (n.includes('lectura')) return 'LEC';
@@ -21,7 +34,7 @@ app.get('/consulta', async (req, res) => {
   try {
     const r = await fetch(`${ICFES_BASE}/api/segurity/autenticacionResultados`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: DEFAULT_HEADERS,
       body: JSON.stringify({
         tipoDocumento: 'TI', numeroDocumento: '111111111',
         fechaNacimiento: '01/01/2000', numeroRegistro: '', captcha: 'ping',
@@ -43,7 +56,7 @@ app.post('/consulta', async (req, res) => {
   try {
     const authRes = await fetch(`${ICFES_BASE}/api/segurity/autenticacionResultados`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: DEFAULT_HEADERS,
       body: JSON.stringify({
         tipoDocumento: tipoDoc,
         numeroDocumento: document,
@@ -57,6 +70,9 @@ app.post('/consulta', async (req, res) => {
       if (authRes.status === 404) {
         return res.json({ status: false, message: 'El ICFES indica que no se pudieron generar los resultados. Verifica el tipo/número de documento y fecha de nacimiento con los que te inscribiste al examen.' });
       }
+      if (authRes.status === 403) {
+        return res.status(403).json({ status: false, message: 'Acceso no autorizado. El servidor del ICFES bloqueó la petición temporalmente.' });
+      }
       return res.status(authRes.status).json({ status: false, message: 'Error interno conectando al ICFES.' });
     }
 
@@ -66,9 +82,11 @@ app.post('/consulta', async (req, res) => {
     }
 
     const token = authJson.token;
-    const authHeaders = { Authorization: `Bearer ${token}` };
+    const authHeaders = {
+      ...DEFAULT_HEADERS,
+      Authorization: `Bearer ${token}`
+    };
 
-    // Si el usuario especificó un registro, filtramos la lista. Si no, tomamos todos.
     let registrosAProcesar = authJson.datosAutenticacion;
     if (numeroRegistro) {
       const filtrado = authJson.datosAutenticacion.filter(
@@ -93,7 +111,6 @@ app.post('/consulta', async (req, res) => {
       }
     } catch { /* nombre opcional */ }
 
-    // Procesar todos los exámenes asociados
     const listaExamenes = [];
 
     for (const authData of registrosAProcesar) {
@@ -120,7 +137,7 @@ app.post('/consulta', async (req, res) => {
             puntajeMaterias,
           });
         }
-      } catch { /* continuar con otros exámenes si falla uno */ }
+      } catch { /* continuar con otros exámenes */ }
     }
 
     if (listaExamenes.length === 0) {
@@ -137,8 +154,7 @@ app.post('/consulta', async (req, res) => {
   }
 });
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Proxy local ICFES escuchando en http://localhost:${PORT}`);
-  console.log('Ejecuta "npm run dev" en otra terminal para el frontend.');
+  console.log(`Proxy escuchando en el puerto ${PORT}`);
 });
